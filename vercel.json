@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/balances", "destination": "/api/balances" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

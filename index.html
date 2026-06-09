@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Outstanding Balances · Buildium</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #18212f;
+    --ink-2: #5a6677;
+    --ink-3: #8a93a2;
+    --line: #e7eaef;
+    --line-2: #eef1f5;
+    --accent: #136f69;
+    --accent-weak: #e4efee;
+    --danger: #b23b3b;
+    --danger-weak: #fbeaea;
+    --ok: #1b7a48;
+    --ok-weak: #e6f4ec;
+    --info: #2456a6;
+    --info-weak: #e8f0fb;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.07);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { max-width: 1140px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 680;
+    letter-spacing: -0.02em;
+  }
+  .masthead .sub { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+  .masthead .sub .asof { color: var(--ink-3); }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    padding: 9px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .btn:hover { border-color: #d5dae2; }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn[disabled] { opacity: .55; cursor: progress; }
+
+  /* ---------- stat cards ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .stat .k { color: var(--ink-2); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .stat .v { margin-top: 6px; font-size: 24px; font-weight: 680; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat.accent .v { color: var(--accent); }
+
+  /* ---------- controls ---------- */
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    display: flex;
+    gap: 26px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field > .lbl { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+
+  .checks { display: flex; gap: 8px; flex-wrap: wrap; }
+  .check {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); background: #fff;
+    padding: 8px 12px; border-radius: 999px; cursor: pointer;
+    font-size: 14px; user-select: none; transition: border-color .12s, background .12s;
+  }
+  .check:hover { border-color: #d5dae2; }
+  .check input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+  .check .count { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .check:has(input:checked) { border-color: var(--accent); background: var(--accent-weak); }
+
+  select, .search {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font: inherit; font-size: 14px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    min-width: 220px;
+  }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235a6677' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; padding-right: 32px; }
+  select:focus-visible, .search:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+  .field.grow { flex: 1 1 220px; }
+  .search { width: 100%; min-width: 0; }
+
+  /* ---------- table ---------- */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    text-align: left;
+    font-size: 12px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--ink-2);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #fbfcfd;
+    white-space: nowrap;
+  }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--ink); }
+  th .arrow { opacity: .35; font-size: 10px; margin-left: 4px; }
+  th.sorted .arrow { opacity: 1; color: var(--accent); }
+  th.num, td.num { text-align: right; }
+
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  tbody tr.lease { transition: background .1s ease; }
+  tbody tr.lease.expandable { cursor: pointer; }
+  tbody tr.lease.expandable:hover { background: #fafbfc; }
+  tbody tr.lease:last-child td { border-bottom: none; }
+
+  .tenant { font-weight: 580; color: var(--ink); }
+  .muted { color: var(--ink-3); }
+  .sub-line { color: var(--ink-2); font-size: 13px; }
+
+  .caret { display: inline-flex; width: 18px; color: var(--ink-3); transition: transform .15s ease; }
+  tr.lease.open .caret { transform: rotate(90deg); color: var(--accent); }
+  .no-caret { display: inline-block; width: 18px; }
+
+  .amount { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap; }
+  .amount.zero { color: var(--ink-3); font-weight: 500; }
+
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .badge.current { color: var(--ok); background: var(--ok-weak); }
+  .badge.future  { color: var(--info); background: var(--info-weak); }
+  .badge.past    { color: var(--ink-2); background: var(--line-2); }
+  .badge.unknown { color: var(--ink-3); background: var(--line-2); }
+
+  .chip-aged { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--danger); background: var(--danger-weak); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+
+  /* breakdown sub-rows */
+  tr.breakdown td { background: #fafbfc; padding: 0 16px; border-bottom: 1px solid var(--line-2); }
+  .bk-inner { padding: 4px 0 10px 34px; }
+  .bk-line { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 6px 14px; border-radius: 8px; max-width: 560px; }
+  .bk-line + .bk-line { margin-top: 2px; }
+  .bk-line.match { background: var(--accent-weak); }
+  .bk-name { display: flex; flex-direction: column; }
+  .bk-name .t { font-weight: 540; }
+  .bk-name .ty { font-size: 12px; color: var(--ink-3); }
+  .bk-amt { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ---------- footer ---------- */
+  .tablefoot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 13px; background: #fbfcfd; }
+  .tablefoot .total { font-weight: 600; color: var(--ink); }
+  .tablefoot .total .amount { font-size: 14px; }
+  .tablefoot .note { color: var(--accent); font-weight: 550; }
+
+  /* ---------- states ---------- */
+  .state { padding: 64px 24px; text-align: center; color: var(--ink-2); }
+  .state h2 { color: var(--ink); font-size: 18px; font-weight: 620; margin: 0 0 8px; }
+  .state p { margin: 0 auto; max-width: 460px; }
+  .state code { background: var(--line-2); padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 13px; }
+  .state .actions { margin-top: 18px; }
+  .state.error h2 { color: var(--danger); }
+  .spinner { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 720px) {
+    .app { padding: 20px 14px 48px; }
+    .stats { grid-template-columns: 1fr; }
+    .controls { gap: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div>
+        <h1>Outstanding Balances</h1>
+        <p class="sub">Tenant balances owed across the portfolio, by lease. <span class="asof" id="asof"></span></p>
+      </div>
+      <button class="btn" id="refresh">Refresh</button>
+    </header>
+
+    <section class="stats" id="stats" hidden>
+      <div class="stat accent"><div class="k">Total outstanding</div><div class="v" id="stat-total">—</div></div>
+      <div class="stat"><div class="k">Leases with a balance</div><div class="v" id="stat-leases">—</div></div>
+      <div class="stat"><div class="k">GL accounts owed</div><div class="v" id="stat-gl">—</div></div>
+    </section>
+
+    <section class="controls" id="controls" hidden>
+      <div class="field">
+        <span class="lbl">Lease status</span>
+        <div class="checks" id="status-checks">
+          <label class="check"><input type="checkbox" value="Active" checked><span>Current</span><span class="count" data-count="Active"></span></label>
+          <label class="check"><input type="checkbox" value="Future" checked><span>Future</span><span class="count" data-count="Future"></span></label>
+          <label class="check"><input type="checkbox" value="Past" checked><span>Past</span><span class="count" data-count="Past"></span></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">GL account</span>
+        <select id="gl-select"><option value="all">All GL accounts</option></select>
+      </div>
+      <div class="field grow">
+        <span class="lbl">Search</span>
+        <input class="search" id="search" type="search" placeholder="Tenant, property, or unit…" autocomplete="off">
+      </div>
+    </section>
+
+    <div class="panel">
+      <div id="content">
+        <div class="state"><div class="spinner"></div><p>Loading balances from Buildium…</p></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- state ----------
+  var STATE = {
+    raw: null,
+    error: null,
+    loading: true,
+    filters: { statuses: new Set(["Active", "Future", "Past"]), gl: "all", q: "" },
+    sort: { key: "amount", dir: "desc" },
+    expanded: new Set(),
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var contentEl = $("content");
+
+  // ---------- formatting helpers ----------
+  function moneyFmt() {
+    var cur = (STATE.raw && STATE.raw.currency) || "USD";
+    try { return new Intl.NumberFormat("en-US", { style: "currency", currency: cur }); }
+    catch (e) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }); }
+  }
+  function money(n) { return moneyFmt().format(Number(n) || 0); }
+
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmtDate(s) {
+    if (!s) return null;
+    var p = String(s).slice(0, 10).split("-");
+    if (p.length !== 3) return String(s);
+    var y = +p[0], m = +p[1], d = +p[2];
+    if (!y || !m || !d) return String(s);
+    return MONTHS[m - 1] + " " + d + ", " + y;
+  }
+  function term(from, to) {
+    var f = fmtDate(from), t = fmtDate(to);
+    if (!f && !t) return '<span class="muted">—</span>';
+    if (f && !t) return f + " – <span class=\"muted\">open</span>";
+    if (!f && t) return '<span class="muted">?</span> – ' + t;
+    return f + " – " + t;
+  }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function statusMeta(s) {
+    if (s === "Active") return { cls: "current", label: "Current" };
+    if (s === "Future") return { cls: "future", label: "Future" };
+    if (s === "Past") return { cls: "past", label: "Past" };
+    return { cls: "unknown", label: "—" };
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  // ---------- data fetch ----------
+  function fetchData() {
+    STATE.loading = true; STATE.error = null;
+    $("refresh").disabled = true;
+    render();
+    fetch("/api/balances")
+      .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
+      .then(function (r) {
+        if (!r.ok) { STATE.error = r.body || { error: "Request failed.", code: "ERROR" }; STATE.raw = null; }
+        else { STATE.raw = r.body; STATE.error = null; populateControls(); }
+      })
+      .catch(function (e) { STATE.error = { error: "Could not reach the server. Is it running? (" + e.message + ")", code: "NETWORK" }; })
+      .then(function () { STATE.loading = false; $("refresh").disabled = false; render(); });
+  }
+
+  // ---------- populate controls from data ----------
+  function populateControls() {
+    var data = STATE.raw;
+    // as-of timestamp
+    if (data.generatedAt) {
+      var dt = new Date(data.generatedAt);
+      $("asof").textContent = "As of " + dt.toLocaleString();
+    }
+    // GL dropdown
+    var sel = $("gl-select");
+    sel.innerHTML = '<option value="all">All GL accounts</option>';
+    (data.glAccounts || []).forEach(function (g) {
+      var o = document.createElement("option");
+      o.value = String(g.id);
+      o.textContent = g.name + (g.type ? "  ·  " + g.type : "");
+      sel.appendChild(o);
+    });
+    if (!data.glAccounts.some(function (g) { return String(g.id) === STATE.filters.gl; })) {
+      STATE.filters.gl = "all";
+    }
+    sel.value = STATE.filters.gl;
+
+    // status counts (from full dataset)
+    var counts = { Active: 0, Future: 0, Past: 0 };
+    (data.rows || []).forEach(function (r) { if (counts[r.status] != null) counts[r.status]++; });
+    document.querySelectorAll(".count[data-count]").forEach(function (el) {
+      var c = counts[el.getAttribute("data-count")] || 0;
+      el.textContent = "(" + c + ")";
+    });
+  }
+
+  // ---------- compute filtered + sorted rows ----------
+  function computeRows() {
+    var f = STATE.filters;
+    var rows = (STATE.raw.rows || []).slice();
+
+    // attach a display amount (GL-specific when a GL is selected)
+    rows = rows.map(function (r) {
+      var displayAmount = r.totalBalance;
+      var matched = true;
+      if (f.gl !== "all") {
+        var line = (r.breakdown || []).filter(function (b) { return String(b.glAccountId) === f.gl; })[0];
+        matched = !!line;
+        displayAmount = line ? line.amount : 0;
+      }
+      return Object.assign({}, r, { displayAmount: displayAmount, _matchesGl: matched });
+    });
+
+    // status filter — never drop rows whose status is unknown/null
+    rows = rows.filter(function (r) {
+      return r.status == null || f.statuses.has(r.status);
+    });
+
+    // GL filter
+    if (f.gl !== "all") rows = rows.filter(function (r) { return r._matchesGl; });
+
+    // search
+    var q = f.q.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(function (r) {
+        var hay = (r.tenants.join(" ") + " " + r.propertyName + " " + (r.unitNumber || "")).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+
+    // sort
+    var dir = STATE.sort.dir === "asc" ? 1 : -1;
+    var key = STATE.sort.key;
+    rows.sort(function (a, b) {
+      var va, vb;
+      if (key === "amount") { va = a.displayAmount; vb = b.displayAmount; }
+      else if (key === "tenant") { va = (a.tenants[0] || "").toLowerCase(); vb = (b.tenants[0] || "").toLowerCase(); }
+      else if (key === "property") { va = (a.propertyName + " " + (a.unitNumber || "")).toLowerCase(); vb = (b.propertyName + " " + (b.unitNumber || "")).toLowerCase(); }
+      else if (key === "status") { va = a.status || "zzz"; vb = b.status || "zzz"; }
+      else { va = a.displayAmount; vb = b.displayAmount; }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+
+    return rows;
+  }
+
+  // ---------- render ----------
+  function render() {
+    if (STATE.loading) {
+      hideChrome();
+      contentEl.innerHTML = '<div class="state"><div class="spinner"></div><p>Loading balances from Buildium…</p></div>';
+      return;
+    }
+    if (STATE.error) { renderError(STATE.error); return; }
+    if (!STATE.raw) return;
+
+    showChrome();
+    renderStats();
+
+    var rows = computeRows();
+
+    if (rows.length === 0) {
+      contentEl.innerHTML = emptyState();
+      var clr = $("clear-filters");
+      if (clr) clr.addEventListener("click", resetFilters);
+      return;
+    }
+
+    contentEl.innerHTML = tableHtml(rows) + footHtml(rows);
+    wireTable();
+  }
+
+  function hideChrome() { $("stats").hidden = true; $("controls").hidden = true; }
+  function showChrome() { $("stats").hidden = false; $("controls").hidden = false; }
+
+  function renderStats() {
+    var t = STATE.raw.totals || {};
+    $("stat-total").textContent = money(t.totalOutstanding || 0);
+    $("stat-leases").textContent = (t.leaseCount || 0).toLocaleString();
+    $("stat-gl").textContent = (STATE.raw.glAccounts || []).length.toLocaleString();
+  }
+
+  function sortableTh(key, label, opts) {
+    opts = opts || {};
+    var sorted = STATE.sort.key === key;
+    var arrow = sorted ? (STATE.sort.dir === "asc" ? "▲" : "▼") : "▾";
+    return '<th class="sortable ' + (opts.num ? "num " : "") + (sorted ? "sorted" : "") +
+      '" data-sort="' + key + '" aria-sort="' + (sorted ? (STATE.sort.dir === "asc" ? "ascending" : "descending") : "none") + '">' +
+      esc(label) + '<span class="arrow">' + arrow + '</span></th>';
+  }
+
+  function tableHtml(rows) {
+    var glFiltered = STATE.filters.gl !== "all";
+    var amtLabel = glFiltered ? "Owed (this GL)" : "Owed";
+    var head =
+      '<div class="table-wrap"><table><thead><tr>' +
+      '<th style="width:18px"></th>' +
+      sortableTh("tenant", "Tenant") +
+      sortableTh("property", "Property / Unit") +
+      '<th>Lease term</th>' +
+      sortableTh("status", "Status") +
+      sortableTh("amount", amtLabel, { num: true }) +
+      '</tr></thead><tbody>';
+
+    var body = rows.map(function (r) {
+      var sm = statusMeta(r.status);
+      var hasBreakdown = (r.breakdown || []).length > 0;
+      var open = STATE.expanded.has(r.leaseId);
+      var aged = r.aging && r.aging.d90_plus > 0;
+      var tenants = r.tenants.length ? esc(r.tenants.join(", ")) : '<span class="muted">No tenant on record</span>';
+      var unit = r.unitNumber ? "Unit " + esc(r.unitNumber) : '<span class="muted">No unit #</span>';
+
+      var main =
+        '<tr class="lease ' + (hasBreakdown ? "expandable " : "") + (open ? "open" : "") + '" data-lease="' + esc(r.leaseId) + '">' +
+          '<td>' + (hasBreakdown ? '<span class="caret">▶</span>' : '<span class="no-caret"></span>') + '</td>' +
+          '<td><span class="tenant">' + tenants + '</span></td>' +
+          '<td>' + esc(r.propertyName) + '<div class="sub-line">' + unit + '</div></td>' +
+          '<td class="sub-line">' + term(r.from, r.to) + '</td>' +
+          '<td><span class="badge ' + sm.cls + '">' + esc(sm.label) + '</span></td>' +
+          '<td class="num"><span class="amount' + (r.displayAmount === 0 ? " zero" : "") + '">' + money(r.displayAmount) + '</span>' +
+            (aged ? '<span class="chip-aged">90+ days</span>' : '') + '</td>' +
+        '</tr>';
+
+      var detail = "";
+      if (hasBreakdown && open) {
+        var lines = r.breakdown.slice().sort(function (a, b) { return b.amount - a.amount; }).map(function (b) {
+          var match = glFiltered && String(b.glAccountId) === STATE.filters.gl;
+          return '<div class="bk-line' + (match ? " match" : "") + '">' +
+            '<span class="bk-name"><span class="t">' + esc(b.glName) + '</span>' +
+            (b.glType ? '<span class="ty">' + esc(b.glType) + '</span>' : '') + '</span>' +
+            '<span class="bk-amt">' + money(b.amount) + '</span></div>';
+        }).join("");
+        detail = '<tr class="breakdown"><td colspan="6"><div class="bk-inner">' + lines + '</div></td></tr>';
+      }
+      return main + detail;
+    }).join("");
+
+    return head + body + "</tbody></table></div>";
+  }
+
+  function footHtml(rows) {
+    var glFiltered = STATE.filters.gl !== "all";
+    var sum = rows.reduce(function (s, r) { return s + r.displayAmount; }, 0);
+    var total = STATE.raw.totals.leaseCount || 0;
+    var note = "";
+    if (glFiltered) {
+      var opt = $("gl-select").options[$("gl-select").selectedIndex];
+      var glName = opt ? opt.textContent.split("  ·  ")[0] : "selected GL account";
+      note = '<span class="note">Showing the ' + esc(glName) + ' portion</span>';
+    }
+    return '<div class="tablefoot">' +
+      '<span>Showing ' + plural(rows.length, "lease", "leases") + ' of ' + total + '</span>' +
+      note +
+      '<span class="total">Filtered total <span class="amount">' + money(sum) + '</span></span>' +
+      '</div>';
+  }
+
+  function emptyState() {
+    var anyData = (STATE.raw.rows || []).length > 0;
+    if (!anyData) {
+      return '<div class="state"><h2>No outstanding balances</h2>' +
+        '<p>Every lease in the portfolio is paid up. Nothing is owed right now.</p></div>';
+    }
+    return '<div class="state"><h2>No balances match these filters</h2>' +
+      '<p>Try selecting more lease statuses, clearing the GL account, or changing your search.</p>' +
+      '<div class="actions"><button class="btn" id="clear-filters">Clear filters</button></div></div>';
+  }
+
+  function renderError(err) {
+    hideChrome();
+    var code = err.code || "ERROR";
+    var title, msg;
+    if (code === "NO_CREDENTIALS") {
+      title = "Add your Buildium credentials";
+      msg = 'Copy <code>.env.example</code> to <code>.env</code>, fill in your ' +
+            '<code>BUILDIUM_CLIENT_ID</code> and <code>BUILDIUM_CLIENT_SECRET</code>, then restart the server.';
+    } else if (code === "AUTH") {
+      title = "Buildium rejected the credentials";
+      msg = "The keys were sent but Buildium returned an authorization error. Double-check the client ID and secret, " +
+            "and confirm API access is enabled for them in Buildium (Settings → Developer Tools).";
+    } else if (code === "NETWORK") {
+      title = "Can’t reach the app server";
+      msg = esc(err.error || "") + " Start it with <code>npm start</code> and reload.";
+    } else {
+      title = "Something went wrong talking to Buildium";
+      msg = esc(err.error || "Unexpected error.");
+    }
+    contentEl.innerHTML = '<div class="state error"><h2>' + esc(title) + '</h2><p>' + msg + '</p>' +
+      '<div class="actions"><button class="btn" id="retry">Try again</button></div></div>';
+    var btn = $("retry");
+    if (btn) btn.addEventListener("click", fetchData);
+  }
+
+  // ---------- table wiring ----------
+  function wireTable() {
+    document.querySelectorAll("th.sortable").forEach(function (th) {
+      th.addEventListener("click", function () {
+        var key = th.getAttribute("data-sort");
+        if (STATE.sort.key === key) STATE.sort.dir = STATE.sort.dir === "asc" ? "desc" : "asc";
+        else { STATE.sort.key = key; STATE.sort.dir = key === "amount" ? "desc" : "asc"; }
+        render();
+      });
+    });
+    document.querySelectorAll("tr.lease.expandable").forEach(function (tr) {
+      tr.addEventListener("click", function () {
+        var id = numId(tr.getAttribute("data-lease"));
+        if (STATE.expanded.has(id)) STATE.expanded.delete(id);
+        else STATE.expanded.add(id);
+        render();
+      });
+    });
+  }
+
+  // lease ids come back as numbers; data-attrs are strings — normalize
+  function numId(s) { var n = Number(s); return Number.isNaN(n) ? s : n; }
+
+  // ---------- filter controls ----------
+  function resetFilters() {
+    STATE.filters.statuses = new Set(["Active", "Future", "Past"]);
+    STATE.filters.gl = "all";
+    STATE.filters.q = "";
+    document.querySelectorAll('#status-checks input').forEach(function (c) { c.checked = true; });
+    $("gl-select").value = "all";
+    $("search").value = "";
+    render();
+  }
+
+  function wireControls() {
+    document.querySelectorAll('#status-checks input').forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        if (cb.checked) STATE.filters.statuses.add(cb.value);
+        else STATE.filters.statuses.delete(cb.value);
+        render();
+      });
+    });
+    $("gl-select").addEventListener("change", function () { STATE.filters.gl = this.value; render(); });
+    var searchT;
+    $("search").addEventListener("input", function () {
+      var v = this.value;
+      clearTimeout(searchT);
+      searchT = setTimeout(function () { STATE.filters.q = v; render(); }, 120);
+    });
+    $("refresh").addEventListener("click", fetchData);
+  }
+
+  // ---------- go ----------
+  wireControls();
+  fetchData();
+})();
+</script>
+</body>
+</html>
